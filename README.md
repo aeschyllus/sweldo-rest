@@ -6,9 +6,31 @@ Go version: `go version go1.26.0 darwin/arm64`
 
 Install `goose` and `sqlc`
 
+On MacOS
+
 ```zsh
 $ brew install goose sqlc
 ```
+
+On Arch Linux
+
+```zsh
+// for goose
+$ go install github.com/pressly/goose/v3/cmd/goose@latest
+
+// for sqlc
+$ sudo pacman -S goose sqlc
+```
+
+## Generate sqlc types
+
+Run the command:
+
+```zsh
+$ sqlc generate
+```
+
+This will populate the `adapters/postgresql/sqlc/` directory with `*.sql.go` files.
 
 ## How to run locally
 
@@ -33,12 +55,3 @@ $ goose -s description_of_migration sql
 $ Created new file: 00001_description_of_migration.sql
 ```
 
-## Generate sqlc types
-
-Run the command:
-
-```zsh
-$ sqlc generate
-```
-
-This will populate the `adapters/postgresql/sqlc/` directory with `*.sql.go` files.
