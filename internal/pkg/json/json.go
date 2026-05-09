@@ -11,7 +11,8 @@ func Write(w http.ResponseWriter, status int, data any) {
 	json.NewEncoder(w).Encode(data)
 }
 
-func Read(r *http.Request, data any) error {
+func Read(w http.ResponseWriter, r *http.Request, data any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields() // Throws an error if an unknown field is passed to the body
 	return decoder.Decode(data)

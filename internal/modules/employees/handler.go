@@ -1,6 +1,7 @@
 package employees
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -23,7 +24,7 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 
 func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	var req createEmployeeRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -37,7 +38,8 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		BaseSalary:     req.BaseSalary,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to create employee", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -79,7 +81,7 @@ func (h *handler) FindEmployeeByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req findEmployeeRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -105,7 +107,7 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req updateEmployeeRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -119,7 +121,8 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 		BaseSalary:     req.BaseSalary,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to update employee", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 

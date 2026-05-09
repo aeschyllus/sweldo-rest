@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"regexp"
 
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/env"
 	"github.com/jackc/pgx/v5"
@@ -30,7 +31,7 @@ func main() {
 	}
 	defer conn.Close(ctx) // Close DB connection when app shuts down
 
-	logger.Info("Connected to database", "dsn", cfg.db.dsn)
+	logger.Info("Connected to database", "dsn", sanitizeDSN(cfg.db.dsn))
 
 	api := application{
 		config: cfg,
@@ -41,4 +42,10 @@ func main() {
 		logger.Error("Server has failed to start", "error", err)
 		os.Exit(1)
 	}
+}
+
+var dsnPasswordRe = regexp.MustCompile(`password=\S+`)
+
+func sanitizeDSN(dsn string) string {
+	return dsnPasswordRe.ReplaceAllString(dsn, "password=****")
 }

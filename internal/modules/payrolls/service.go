@@ -20,11 +20,16 @@ func (s *service) CreatePayrollRun(ctx context.Context, params CreatePayrollRunP
 		return PayrollRunResponse{}, err
 	}
 
+	totalPay, err := pgconvert.ToNumeric(params.TotalPay)
+	if err != nil {
+		return PayrollRunResponse{}, err
+	}
+
 	sqlcParams := sqlc.CreatePayrollRunParams{
 		CompanyID:      params.CompanyID,
 		RunDate:        pgconvert.ToDate(runDate),
 		TotalEmployees: params.TotalEmployees,
-		TotalPay:       pgconvert.ToNumeric(params.TotalPay),
+		TotalPay:       totalPay,
 	}
 
 	run, err := s.repo.CreatePayrollRun(ctx, sqlcParams)
@@ -59,9 +64,14 @@ func (s *service) FindPayrollRunByID(ctx context.Context, id int64) (PayrollRunR
 }
 
 func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params UpdatePayrollRunParams) (PayrollRunResponse, error) {
+	totalPay, err := pgconvert.ToNumeric(params.TotalPay)
+	if err != nil {
+		return PayrollRunResponse{}, err
+	}
+
 	sqlcParams := sqlc.UpdatePayrollRunByIDParams{
 		TotalEmployees: params.TotalEmployees,
-		TotalPay:       pgconvert.ToNumeric(params.TotalPay),
+		TotalPay:       totalPay,
 		ID:             id,
 	}
 
@@ -76,12 +86,27 @@ func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params Upd
 // Payroll Detail operations
 
 func (s *service) CreatePayrollDetail(ctx context.Context, runID int64, params CreatePayrollDetailParams) (PayrollDetailResponse, error) {
+	grossPay, err := pgconvert.ToNumeric(params.GrossPay)
+	if err != nil {
+		return PayrollDetailResponse{}, err
+	}
+
+	taxDeduction, err := pgconvert.ToNumeric(params.TaxDeduction)
+	if err != nil {
+		return PayrollDetailResponse{}, err
+	}
+
+	netPay, err := pgconvert.ToNumeric(params.NetPay)
+	if err != nil {
+		return PayrollDetailResponse{}, err
+	}
+
 	sqlcParams := sqlc.CreatePayrollDetailParams{
 		PayrollRunID: runID,
 		EmployeeID:   params.EmployeeID,
-		GrossPay:     pgconvert.ToNumeric(params.GrossPay),
-		TaxDeduction: pgconvert.ToNumeric(params.TaxDeduction),
-		NetPay:       pgconvert.ToNumeric(params.NetPay),
+		GrossPay:     grossPay,
+		TaxDeduction: taxDeduction,
+		NetPay:       netPay,
 	}
 
 	detail, err := s.repo.CreatePayrollDetail(ctx, sqlcParams)

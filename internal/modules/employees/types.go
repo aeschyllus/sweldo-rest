@@ -31,7 +31,6 @@ type createEmployeeRequest struct {
 }
 
 type findEmployeeRequest struct {
-	ID        int64 `json:"id"`
 	CompanyID int64 `json:"company_id"`
 }
 

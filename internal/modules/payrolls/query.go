@@ -1,6 +1,7 @@
 package payrolls
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -8,7 +9,7 @@ import (
 func parseListPayrollRunsQuery(r *http.Request) (listPayrollRunsQuery, error) {
 	companyIDStr := r.URL.Query().Get("company_id")
 	if companyIDStr == "" {
-		return listPayrollRunsQuery{}, nil
+		return listPayrollRunsQuery{}, fmt.Errorf("company_id is required")
 	}
 
 	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
@@ -22,7 +23,7 @@ func parseListPayrollRunsQuery(r *http.Request) (listPayrollRunsQuery, error) {
 func parseListPayrollDetailsQuery(r *http.Request) (listPayrollDetailsQuery, error) {
 	employeeIDStr := r.URL.Query().Get("employee_id")
 	if employeeIDStr == "" {
-		return listPayrollDetailsQuery{}, nil
+		return listPayrollDetailsQuery{}, fmt.Errorf("employee_id is required")
 	}
 
 	employeeID, err := strconv.ParseInt(employeeIDStr, 10, 64)

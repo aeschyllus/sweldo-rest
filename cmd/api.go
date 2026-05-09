@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -31,7 +31,7 @@ type dbConfig struct {
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(middleware.RequestID) // Important for rate limiting
+	r.Use(middleware.RequestID) // Injects request ID into context for logging
 	r.Use(middleware.RealIP)    // Important for rate limiting and analytics
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer) // Recover from crashes
@@ -69,7 +69,7 @@ func (app *application) run(h http.Handler) error {
 		IdleTimeout:  time.Minute,
 	}
 
-	log.Printf("Server has started at addr %s", app.config.addr)
+	slog.Info("server started", "addr", app.config.addr)
 
 	return srv.ListenAndServe()
 }

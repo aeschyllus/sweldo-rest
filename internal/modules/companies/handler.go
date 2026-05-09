@@ -1,6 +1,7 @@
 package companies
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -23,7 +24,7 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 
 func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 	var req createCompanyRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -33,7 +34,8 @@ func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 		TaxID: req.TaxID,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to create company", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -55,7 +57,8 @@ func (h *handler) ListCompanies(w http.ResponseWriter, r *http.Request) {
 
 	companies, err := h.service.ListCompanies(r.Context(), params)
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to list companies", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -88,7 +91,7 @@ func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req updateCompanyRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -99,7 +102,8 @@ func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 		TaxID: req.TaxID,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to update company", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 

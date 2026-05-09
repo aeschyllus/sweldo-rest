@@ -1,6 +1,7 @@
 package payrolls
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -30,7 +31,7 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 
 func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 	var req createPayrollRunRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -42,7 +43,8 @@ func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 		TotalPay:       req.TotalPay,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to create payroll run", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -52,18 +54,14 @@ func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 func (h *handler) ListPayrollRuns(w http.ResponseWriter, r *http.Request) {
 	query, err := parseListPayrollRunsQuery(r)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, "invalid company_id")
-		return
-	}
-
-	if query.CompanyID == 0 {
-		json.WriteError(w, http.StatusBadRequest, "company_id is required")
+		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	responses, err := h.service.ListPayrollRunsByCompanyID(r.Context(), query.CompanyID)
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to list payroll runs", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -96,7 +94,7 @@ func (h *handler) UpdatePayrollRunByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req updatePayrollRunRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -106,7 +104,8 @@ func (h *handler) UpdatePayrollRunByID(w http.ResponseWriter, r *http.Request) {
 		TotalPay:       req.TotalPay,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to update payroll run", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -122,7 +121,7 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req createPayrollDetailRequest
-	if err := json.Read(r, &req); err != nil {
+	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -134,7 +133,8 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 		NetPay:       req.NetPay,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to create payroll detail", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -151,7 +151,8 @@ func (h *handler) ListPayrollDetailsByRunID(w http.ResponseWriter, r *http.Reque
 
 	responses, err := h.service.ListAllPayrollDetailsByRunID(r.Context(), runID)
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to list payroll details by run", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -161,18 +162,14 @@ func (h *handler) ListPayrollDetailsByRunID(w http.ResponseWriter, r *http.Reque
 func (h *handler) ListPayrollDetailsByEmployeeID(w http.ResponseWriter, r *http.Request) {
 	query, err := parseListPayrollDetailsQuery(r)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, "invalid employee_id")
-		return
-	}
-
-	if query.EmployeeID == 0 {
-		json.WriteError(w, http.StatusBadRequest, "employee_id is required")
+		json.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	responses, err := h.service.ListAllPayrollDetailsByEmployeeID(r.Context(), query.EmployeeID)
 	if err != nil {
-		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		slog.ErrorContext(r.Context(), "failed to list payroll details by employee", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 

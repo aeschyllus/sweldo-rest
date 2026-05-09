@@ -17,5 +17,5 @@ func FromDate(d pgtype.Date) string {
 	if !d.Valid {
 		return ""
 	}
-	return d.Time.Format("2026-01-02")
+	return d.Time.Format("2006-01-02")
 }
