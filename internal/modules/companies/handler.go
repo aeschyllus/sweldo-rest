@@ -1,0 +1,107 @@
+package companies
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
+	"github.com/go-chi/chi/v5"
+)
+
+func NewHandler(service Service) *handler {
+	return &handler{service}
+}
+
+func (h *handler) RegisterRoutes(r chi.Router) {
+	r.Route("/companies", func(r chi.Router) {
+		r.Post("/", h.CreateCompany)
+		r.Get("/", h.ListCompanies)
+		r.Get("/{companyID}", h.FindCompanyByID)
+		r.Put("/{companyID}", h.UpdateCompanyByID)
+	})
+}
+
+func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
+	var req createCompanyRequest
+	if err := json.Read(r, &req); err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	company, err := h.service.CreateCompany(r.Context(), CreateCompanyParams{
+		Name:  req.Name,
+		TaxID: req.TaxID,
+	})
+	if err != nil {
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	json.Write(w, http.StatusCreated, company)
+}
+
+// Supports pagination and searching by company name via query parameters
+//
+// e.g.:
+//   - /companies?limit=10&offset=0
+//   - /companies?name=companyname
+//   - /companies?limit=10&offset=0&name=companyname
+func (h *handler) ListCompanies(w http.ResponseWriter, r *http.Request) {
+	params, err := parseListCompaniesQuery(r)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	companies, err := h.service.ListCompanies(r.Context(), params)
+	if err != nil {
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	json.Write(w, http.StatusOK, companies)
+}
+
+func (h *handler) FindCompanyByID(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "companyID")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	company, err := h.service.FindCompanyByID(r.Context(), id)
+	if err != nil {
+		json.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	json.Write(w, http.StatusOK, company)
+}
+
+func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "companyID")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var req updateCompanyRequest
+	if err := json.Read(r, &req); err != nil {
+		json.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	company, err := h.service.UpdateCompanyByID(r.Context(), UpdateCompanyParams{
+		ID:    id,
+		Name:  req.Name,
+		TaxID: req.TaxID,
+	})
+	if err != nil {
+		json.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	json.Write(w, http.StatusOK, company)
+}
