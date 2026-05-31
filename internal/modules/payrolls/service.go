@@ -2,18 +2,17 @@ package payrolls
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
-	"github.com/aeschyllus/sweldo-rest/internal/pkg/pgconvert"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewService(repo sqlc.Querier) Service {
 	return &service{repo}
 }
-
-// Payroll Run operations
 
 func (s *service) CreatePayrollRun(ctx context.Context, params CreatePayrollRunParams) (PayrollRunResponse, error) {
 	runDate, err := time.Parse("2006-01-02", params.RunDate)
@@ -21,14 +20,14 @@ func (s *service) CreatePayrollRun(ctx context.Context, params CreatePayrollRunP
 		return PayrollRunResponse{}, err
 	}
 
-	totalPay, err := pgconvert.ToNumeric(params.TotalPay)
+	totalPay, err := money.ToNumeric(params.TotalPay)
 	if err != nil {
 		return PayrollRunResponse{}, err
 	}
 
 	sqlcParams := sqlc.CreatePayrollRunParams{
 		CompanyID:      params.CompanyID,
-		RunDate:        pgconvert.ToDate(runDate),
+		RunDate:        toDate(runDate),
 		TotalEmployees: params.TotalEmployees,
 		TotalPay:       totalPay,
 	}
@@ -65,7 +64,7 @@ func (s *service) FindPayrollRunByID(ctx context.Context, id int64) (PayrollRunR
 }
 
 func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params UpdatePayrollRunParams) (PayrollRunResponse, error) {
-	totalPay, err := pgconvert.ToNumeric(params.TotalPay)
+	totalPay, err := money.ToNumeric(params.TotalPay)
 	if err != nil {
 		return PayrollRunResponse{}, err
 	}
@@ -84,20 +83,47 @@ func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params Upd
 	return toPayrollRunResponse(run), nil
 }
 
-// Payroll Detail operations
+func (s *service) FinalizePayrollRun(ctx context.Context, id int64) (PayrollRunResponse, error) {
+	run, err := s.repo.FinalizePayrollRunByID(ctx, id)
+	if err != nil {
+		return PayrollRunResponse{}, fmt.Errorf("finalize payroll run: %w", err)
+	}
+
+	return toPayrollRunResponse(run), nil
+}
 
 func (s *service) CreatePayrollDetail(ctx context.Context, runID int64, params CreatePayrollDetailParams) (PayrollDetailResponse, error) {
-	grossPay, err := pgconvert.ToNumeric(params.GrossPay)
+	run, err := s.repo.FindPayrollRunByID(ctx, runID)
+	if err != nil {
+		return PayrollDetailResponse{}, fmt.Errorf("payroll run not found: %w", err)
+	}
+
+	if run.Status == "FINALIZED" {
+		return PayrollDetailResponse{}, fmt.Errorf("cannot add details to a finalized payroll run")
+	}
+
+	grossPay, err := money.ToNumeric(params.GrossPay)
 	if err != nil {
 		return PayrollDetailResponse{}, err
 	}
 
-	taxDeduction, err := pgconvert.ToNumeric(params.TaxDeduction)
+	taxDeduction, err := money.ToNumeric(params.TaxDeduction)
 	if err != nil {
 		return PayrollDetailResponse{}, err
 	}
 
-	netPay, err := pgconvert.ToNumeric(params.NetPay)
+	netPayCents := params.GrossPay - params.TaxDeduction
+	netPay, err := money.ToNumeric(netPayCents)
+	if err != nil {
+		return PayrollDetailResponse{}, err
+	}
+
+	hourlyRate, err := money.ToNumeric(params.HourlyRate)
+	if err != nil {
+		return PayrollDetailResponse{}, err
+	}
+
+	hoursWorked, err := money.ToNumeric(params.HoursWorked)
 	if err != nil {
 		return PayrollDetailResponse{}, err
 	}
@@ -108,6 +134,8 @@ func (s *service) CreatePayrollDetail(ctx context.Context, runID int64, params C
 		GrossPay:     grossPay,
 		TaxDeduction: taxDeduction,
 		NetPay:       netPay,
+		HourlyRate:   hourlyRate,
+		HoursWorked:  hoursWorked,
 	}
 
 	detail, err := s.repo.CreatePayrollDetail(ctx, sqlcParams)
@@ -146,10 +174,45 @@ func (s *service) ListAllPayrollDetailsByEmployeeID(ctx context.Context, employe
 	return responses, nil
 }
 
-// Helper functions (package-level, not methods)
+func (s *service) CreateDeduction(ctx context.Context, params CreateDeductionParams) (DeductionResponse, error) {
+	amount, err := money.ToNumeric(params.Amount)
+	if err != nil {
+		return DeductionResponse{}, err
+	}
+
+	deduction, err := s.repo.CreateDeduction(ctx, sqlc.CreateDeductionParams{
+		PayrollDetailID: params.PayrollDetailID,
+		DeductionType:   params.DeductionType,
+		Amount:          amount,
+	})
+	if err != nil {
+		return DeductionResponse{}, err
+	}
+
+	return toDeductionResponse(deduction), nil
+}
+
+func (s *service) ListDeductionsByDetailID(ctx context.Context, detailID int64) ([]DeductionResponse, error) {
+	deductions, err := s.repo.ListDeductionsByPayrollDetailID(ctx, detailID)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]DeductionResponse, len(deductions))
+	for i, d := range deductions {
+		responses[i] = toDeductionResponse(d)
+	}
+
+	return responses, nil
+}
+
+func (s *service) DeleteDeduction(ctx context.Context, id int64) error {
+	_, err := s.repo.DeleteDeduction(ctx, id)
+	return err
+}
 
 func toPayrollRunResponse(run sqlc.PayrollRun) PayrollRunResponse {
-	cents, err := pgconvert.FromNumeric(run.TotalPay)
+	cents, err := money.FromNumeric(run.TotalPay)
 	if err != nil {
 		cents = 0
 	}
@@ -157,17 +220,20 @@ func toPayrollRunResponse(run sqlc.PayrollRun) PayrollRunResponse {
 	return PayrollRunResponse{
 		ID:             run.ID,
 		CompanyID:      run.CompanyID,
-		RunDate:        pgconvert.FromDate(run.RunDate),
+		RunDate:        fromDate(run.RunDate),
 		TotalEmployees: run.TotalEmployees,
 		TotalPay:       money.FormatCents(cents),
-		CreatedAt:      pgconvert.FromTimestamptz(run.CreatedAt),
+		Status:         run.Status,
+		CreatedAt:      fromTimestamptz(run.CreatedAt),
 	}
 }
 
 func toPayrollDetailResponse(detail sqlc.PayrollDetail) PayrollDetailResponse {
-	gross, _ := pgconvert.FromNumeric(detail.GrossPay)
-	tax, _ := pgconvert.FromNumeric(detail.TaxDeduction)
-	net, _ := pgconvert.FromNumeric(detail.NetPay)
+	gross, _ := money.FromNumeric(detail.GrossPay)
+	tax, _ := money.FromNumeric(detail.TaxDeduction)
+	net, _ := money.FromNumeric(detail.NetPay)
+	rate, _ := money.FromNumeric(detail.HourlyRate)
+	hours, _ := money.FromNumeric(detail.HoursWorked)
 
 	return PayrollDetailResponse{
 		ID:           detail.ID,
@@ -176,6 +242,41 @@ func toPayrollDetailResponse(detail sqlc.PayrollDetail) PayrollDetailResponse {
 		GrossPay:     money.FormatCents(gross),
 		TaxDeduction: money.FormatCents(tax),
 		NetPay:       money.FormatCents(net),
-		CreatedAt:    pgconvert.FromTimestamptz(detail.CreatedAt),
+		HourlyRate:   money.FormatCents(rate),
+		HoursWorked:  money.FormatCents(hours),
+		CreatedAt:    fromTimestamptz(detail.CreatedAt),
 	}
+}
+
+func toDeductionResponse(d sqlc.Deduction) DeductionResponse {
+	amt, _ := money.FromNumeric(d.Amount)
+
+	return DeductionResponse{
+		ID:              d.ID,
+		PayrollDetailID: d.PayrollDetailID,
+		DeductionType:   d.DeductionType,
+		Amount:          money.FormatCents(amt),
+		CreatedAt:       fromTimestamptz(d.CreatedAt),
+	}
+}
+
+func toDate(t time.Time) pgtype.Date {
+	return pgtype.Date{
+		Time:  t,
+		Valid: true,
+	}
+}
+
+func fromDate(d pgtype.Date) string {
+	if !d.Valid {
+		return ""
+	}
+	return d.Time.Format("2006-01-02")
+}
+
+func fromTimestamptz(ts pgtype.Timestamptz) time.Time {
+	if !ts.Valid {
+		return time.Time{}
+	}
+	return ts.Time
 }

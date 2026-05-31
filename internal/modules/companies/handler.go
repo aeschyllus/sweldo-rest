@@ -29,6 +29,15 @@ func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Name == "" {
+		json.WriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.TaxID == "" {
+		json.WriteError(w, http.StatusBadRequest, "tax_id is required")
+		return
+	}
+
 	company, err := h.service.CreateCompany(r.Context(), CreateCompanyParams{
 		Name:  req.Name,
 		TaxID: req.TaxID,
@@ -42,12 +51,6 @@ func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 	json.Write(w, http.StatusCreated, company)
 }
 
-// Supports pagination and searching by company name via query parameters
-//
-// e.g.:
-//   - /companies?limit=10&offset=0
-//   - /companies?name=companyname
-//   - /companies?limit=10&offset=0&name=companyname
 func (h *handler) ListCompanies(w http.ResponseWriter, r *http.Request) {
 	params, err := parseListCompaniesQuery(r)
 	if err != nil {
@@ -94,6 +97,15 @@ func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 	var req updateCompanyRequest
 	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.Name == "" {
+		json.WriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if req.TaxID == "" {
+		json.WriteError(w, http.StatusBadRequest, "tax_id is required")
 		return
 	}
 

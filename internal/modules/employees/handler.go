@@ -31,14 +31,34 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.FirstName == "" || req.LastName == "" {
+		json.WriteError(w, http.StatusBadRequest, "first_name and last_name are required")
+		return
+	}
+	if req.EmploymentType == "" || !EmploymentType(req.EmploymentType).Valid() {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid employment_type: %s", req.EmploymentType))
+		return
+	}
+	if req.SalaryType == "" || !SalaryType(req.SalaryType).Valid() {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid salary_type: %s", req.SalaryType))
+		return
+	}
+
 	baseSalary, err := money.ParseCents(req.BaseSalary)
 	if err != nil {
 		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid base_salary: %s", req.BaseSalary))
 		return
 	}
 
+	companyIDStr := r.URL.Query().Get("company_id")
+	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
+	if err != nil || companyID == 0 {
+		json.WriteError(w, http.StatusBadRequest, "company_id is required")
+		return
+	}
+
 	employee, err := h.service.CreateEmployee(r.Context(), CreateEmployeeParams{
-		CompanyID:      req.CompanyID,
+		CompanyID:      companyID,
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		EmploymentType: req.EmploymentType,
@@ -54,15 +74,6 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	json.Write(w, http.StatusCreated, employee)
 }
 
-// Supports searching by first/last name via query parameters.
-//
-// NOTE: It is mandatory to pass in the company_id query parameter.
-// We can inject the company_id in the future via middleware that extracts the company_id from the JWT
-//
-// TODO: add pagination support
-//
-// e.g.:
-//   - /employees?company_id=1&name=juan
 func (h *handler) ListEmployeesByCompanyID(w http.ResponseWriter, r *http.Request) {
 	params, err := parseListEmployeesQuery(r)
 	if err != nil {
@@ -84,7 +95,6 @@ func (h *handler) ListEmployeesByCompanyID(w http.ResponseWriter, r *http.Reques
 	json.Write(w, http.StatusOK, employees)
 }
 
-// TODO: refactor to prevent companies from searching employees of other companies
 func (h *handler) FindEmployeeByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "employeeID")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -127,14 +137,35 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.FirstName == "" || req.LastName == "" {
+		json.WriteError(w, http.StatusBadRequest, "first_name and last_name are required")
+		return
+	}
+	if req.EmploymentType == "" || !EmploymentType(req.EmploymentType).Valid() {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid employment_type: %s", req.EmploymentType))
+		return
+	}
+	if req.SalaryType == "" || !SalaryType(req.SalaryType).Valid() {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid salary_type: %s", req.SalaryType))
+		return
+	}
+
 	baseSalary, err := money.ParseCents(req.BaseSalary)
 	if err != nil {
 		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid base_salary: %s", req.BaseSalary))
 		return
 	}
 
+	companyIDStr := r.URL.Query().Get("company_id")
+	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
+	if err != nil || companyID == 0 {
+		json.WriteError(w, http.StatusBadRequest, "company_id is required")
+		return
+	}
+
 	employee, err := h.service.UpdateEmployeeByID(r.Context(), UpdateEmployeeParams{
 		ID:             id,
+		CompanyID:      companyID,
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		EmploymentType: req.EmploymentType,

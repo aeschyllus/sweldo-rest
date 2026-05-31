@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -9,47 +10,65 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aeschyllus/sweldo-rest/internal/pkg/env"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pressly/goose/v3"
+
+	"github.com/aeschyllus/sweldo-rest/internal/config"
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/env"
+	"github.com/aeschyllus/sweldo-rest/internal/router"
 )
 
 func main() {
 	ctx := context.Background()
 
-	cfg := config{
-		addr: ":8080",
-		db: dbConfig{
-			dsn: env.GetString("GOOSE_DBSTRING", "host=localhost user=postgres password=postgres dbname=sweldo sslmode=disable"),
+	env.LoadEnvFile(".env")
+
+	cfg := config.Config{
+		Addr: env.GetString("PORT", ":8080"),
+		DB: config.DBConfig{
+			DSN: env.GetString("DB_DSN", env.GetString("GOOSE_DBSTRING", "host=localhost user=postgres password=postgres dbname=sweldo sslmode=disable")),
 		},
 	}
 
-	// Logger
+	jwtSecret := env.GetString("JWT_SECRET", "dev-secret-change-in-production")
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// Database pool
-	pool, err := pgxpool.New(ctx, cfg.db.dsn)
+	pool, err := pgxpool.New(ctx, cfg.DB.DSN)
 	if err != nil {
 		panic(err)
 	}
 	defer pool.Close()
 
-	logger.Info("Connected to database", "dsn", sanitizeDSN(cfg.db.dsn))
+	logger.Info("Connected to database", "dsn", sanitizeDSN(cfg.DB.DSN))
+
+	sqlDB, err := sql.Open("pgx", cfg.DB.DSN)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := goose.Up(sqlDB, "internal/adapters/postgresql/migrations"); err != nil {
+		logger.Error("migration failed", "error", err)
+		panic(err)
+	}
+	sqlDB.Close()
+
+	logger.Info("Migrations applied successfully")
 
 	api := application{
 		config: cfg,
 		db:     pool,
 	}
 
-	// Start server in background
 	errCh := make(chan error, 1)
 	go func() {
-		if err := api.run(api.mount()); err != nil {
+		if err := api.run(router.New(pool, jwtSecret)); err != nil {
 			errCh <- err
 		}
 	}()
 
-	// Wait for interrupt signal or server error
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
@@ -61,7 +80,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

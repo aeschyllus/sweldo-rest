@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
-	"github.com/aeschyllus/sweldo-rest/internal/pkg/pgconvert"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewService(repo sqlc.Querier) Service {
@@ -19,9 +19,8 @@ func (s *service) CreateCompany(ctx context.Context, params CreateCompanyParams)
 }
 
 func (s *service) ListCompanies(ctx context.Context, params ListCompaniesParams) ([]sqlc.Company, error) {
-
 	return s.repo.ListCompanies(ctx, sqlc.ListCompaniesParams{
-		Name:       pgconvert.ToText(params.Name),
+		Name:       toText(params.Name),
 		PageLimit:  params.PageLimit,
 		PageOffset: params.PageOffset,
 	})
@@ -37,4 +36,15 @@ func (s *service) UpdateCompanyByID(ctx context.Context, params UpdateCompanyPar
 		Name:  params.Name,
 		TaxID: params.TaxID,
 	})
+}
+
+func toText(s *string) pgtype.Text {
+	var name pgtype.Text
+	if s != nil {
+		name = pgtype.Text{
+			String: *s,
+			Valid:  true,
+		}
+	}
+	return name
 }

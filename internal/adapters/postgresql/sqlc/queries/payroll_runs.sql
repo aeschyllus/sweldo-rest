@@ -17,3 +17,9 @@ UPDATE payroll_runs
 SET total_employees = $1, total_pay = $2
 WHERE id = $3
 RETURNING *;
+
+-- name: FinalizePayrollRunByID :one
+UPDATE payroll_runs
+SET status = 'FINALIZED'
+WHERE id = $1
+RETURNING *;

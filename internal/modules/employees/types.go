@@ -7,6 +7,38 @@ import (
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 )
 
+type EmploymentType string
+
+const (
+	EmploymentTypeFullTime   EmploymentType = "FULL_TIME"
+	EmploymentTypePartTime   EmploymentType = "PART_TIME"
+	EmploymentTypeContractor EmploymentType = "CONTRACTOR"
+)
+
+func (e EmploymentType) Valid() bool {
+	switch e {
+	case EmploymentTypeFullTime, EmploymentTypePartTime, EmploymentTypeContractor:
+		return true
+	}
+	return false
+}
+
+type SalaryType string
+
+const (
+	SalaryTypeMonthly      SalaryType = "MONTHLY"
+	SalaryTypeHourly        SalaryType = "HOURLY"
+	SalaryTypeProjectBased SalaryType = "PROJECT_BASED"
+)
+
+func (s SalaryType) Valid() bool {
+	switch s {
+	case SalaryTypeMonthly, SalaryTypeHourly, SalaryTypeProjectBased:
+		return true
+	}
+	return false
+}
+
 type handler struct {
 	service Service
 }
@@ -23,7 +55,6 @@ type Service interface {
 }
 
 type createEmployeeRequest struct {
-	CompanyID      int64  `json:"company_id"`
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	EmploymentType string `json:"employment_type"`
@@ -50,8 +81,10 @@ type CreateEmployeeParams struct {
 }
 
 type ListEmployeesParams struct {
-	CompanyID int64
-	Name      *string
+	CompanyID  int64
+	Name       *string
+	PageLimit  int32
+	PageOffset int32
 }
 
 type FindEmployeeParams struct {
@@ -61,6 +94,7 @@ type FindEmployeeParams struct {
 
 type UpdateEmployeeParams struct {
 	ID             int64
+	CompanyID      int64
 	FirstName      string
 	LastName       string
 	EmploymentType string

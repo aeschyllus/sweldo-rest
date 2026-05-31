@@ -11,6 +11,25 @@ services:
     volumes:
       - "postgres_data:/var/lib/postgresql/data"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: sweldo-api
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: ":8080"
+      DB_DSN: "host=postgres user=postgres password=postgres dbname=sweldo sslmode=disable"
+      JWT_SECRET: "change-me-in-production"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

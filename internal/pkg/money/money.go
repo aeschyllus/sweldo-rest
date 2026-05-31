@@ -3,8 +3,11 @@ package money
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func ParseCents(s string) (int64, error) {
@@ -59,4 +62,27 @@ func FormatCents(c int64) string {
 	whole := c / 100
 	frac := c % 100
 	return fmt.Sprintf("%s%d.%02d", sign, whole, frac)
+}
+
+func ToNumeric(cents int64) (pgtype.Numeric, error) {
+	val := big.NewRat(cents, 100)
+	var n pgtype.Numeric
+	if err := n.Scan(val.FloatString(2)); err != nil {
+		return pgtype.Numeric{}, err
+	}
+	return n, nil
+}
+
+func FromNumeric(n pgtype.Numeric) (int64, error) {
+	if !n.Valid {
+		return 0, fmt.Errorf("numeric is null")
+	}
+
+	f, err := n.Float64Value()
+	if err != nil {
+		return 0, err
+	}
+
+	cents := int64(f.Float64*100 + 0.5)
+	return cents, nil
 }

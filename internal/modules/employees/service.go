@@ -5,7 +5,7 @@ import (
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
-	"github.com/aeschyllus/sweldo-rest/internal/pkg/pgconvert"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func NewService(repo sqlc.Querier) Service {
@@ -13,7 +13,7 @@ func NewService(repo sqlc.Querier) Service {
 }
 
 func (s *service) CreateEmployee(ctx context.Context, params CreateEmployeeParams) (EmployeeResponse, error) {
-	baseSalary, err := pgconvert.ToNumeric(params.BaseSalary)
+	baseSalary, err := money.ToNumeric(params.BaseSalary)
 	if err != nil {
 		return EmployeeResponse{}, err
 	}
@@ -36,7 +36,9 @@ func (s *service) CreateEmployee(ctx context.Context, params CreateEmployeeParam
 func (s *service) ListEmployeesByCompanyID(ctx context.Context, params ListEmployeesParams) ([]EmployeeResponse, error) {
 	employees, err := s.repo.ListEmployeesByCompanyID(ctx, sqlc.ListEmployeesByCompanyIDParams{
 		CompanyID: params.CompanyID,
-		Name:      pgconvert.ToText(params.Name),
+		Name:      toText(params.Name),
+		PageLimit: params.PageLimit,
+		PageOffset: params.PageOffset,
 	})
 	if err != nil {
 		return nil, err
@@ -63,13 +65,14 @@ func (s *service) FindEmployeeByID(ctx context.Context, params FindEmployeeParam
 }
 
 func (s *service) UpdateEmployeeByID(ctx context.Context, params UpdateEmployeeParams) (EmployeeResponse, error) {
-	baseSalary, err := pgconvert.ToNumeric(params.BaseSalary)
+	baseSalary, err := money.ToNumeric(params.BaseSalary)
 	if err != nil {
 		return EmployeeResponse{}, err
 	}
 
 	employee, err := s.repo.UpdateEmployeeByID(ctx, sqlc.UpdateEmployeeByIDParams{
 		ID:             params.ID,
+		CompanyID:      params.CompanyID,
 		FirstName:      params.FirstName,
 		LastName:       params.LastName,
 		EmploymentType: params.EmploymentType,
@@ -84,7 +87,7 @@ func (s *service) UpdateEmployeeByID(ctx context.Context, params UpdateEmployeeP
 }
 
 func toEmployeeResponse(e sqlc.Employee) EmployeeResponse {
-	cents, err := pgconvert.FromNumeric(e.BaseSalary)
+	cents, err := money.FromNumeric(e.BaseSalary)
 	if err != nil {
 		cents = 0
 	}
@@ -100,4 +103,15 @@ func toEmployeeResponse(e sqlc.Employee) EmployeeResponse {
 		CreatedAt:      e.CreatedAt.Time,
 		UpdatedAt:      e.UpdatedAt.Time,
 	}
+}
+
+func toText(s *string) pgtype.Text {
+	var name pgtype.Text
+	if s != nil {
+		name = pgtype.Text{
+			String: *s,
+			Valid:  true,
+		}
+	}
+	return name
 }

@@ -23,10 +23,16 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 		r.Route("/{runID}", func(r chi.Router) {
 			r.Get("/", h.FindPayrollRunByID)
 			r.Put("/", h.UpdatePayrollRunByID)
+			r.Patch("/finalize", h.FinalizePayrollRun)
 			r.Post("/details", h.CreatePayrollDetail)
 			r.Get("/details", h.ListPayrollDetailsByRunID)
 		})
+	})
 
+	r.Route("/payroll-details/{detailID}/deductions", func(r chi.Router) {
+		r.Post("/", h.CreateDeduction)
+		r.Get("/", h.ListDeductions)
+		r.Delete("/{deductionID}", h.DeleteDeduction)
 	})
 }
 
@@ -37,14 +43,30 @@ func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.RunDate == "" {
+		json.WriteError(w, http.StatusBadRequest, "run_date is required")
+		return
+	}
+	if req.TotalPay == "" {
+		json.WriteError(w, http.StatusBadRequest, "total_pay is required")
+		return
+	}
+
 	totalPay, err := money.ParseCents(req.TotalPay)
 	if err != nil {
 		json.WriteError(w, http.StatusBadRequest, "invalid total_pay")
 		return
 	}
 
+	companyIDStr := r.URL.Query().Get("company_id")
+	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
+	if err != nil || companyID == 0 {
+		json.WriteError(w, http.StatusBadRequest, "company_id is required")
+		return
+	}
+
 	response, err := h.service.CreatePayrollRun(r.Context(), CreatePayrollRunParams{
-		CompanyID:      req.CompanyID,
+		CompanyID:      companyID,
 		RunDate:        req.RunDate,
 		TotalEmployees: req.TotalEmployees,
 		TotalPay:       totalPay,
@@ -125,6 +147,24 @@ func (h *handler) UpdatePayrollRunByID(w http.ResponseWriter, r *http.Request) {
 	json.Write(w, http.StatusOK, response)
 }
 
+func (h *handler) FinalizePayrollRun(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "runID")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid run ID")
+		return
+	}
+
+	response, err := h.service.FinalizePayrollRun(r.Context(), id)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "failed to finalize payroll run", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	json.Write(w, http.StatusOK, response)
+}
+
 func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 	runIDStr := chi.URLParam(r, "runID")
 	runID, err := strconv.ParseInt(runIDStr, 10, 64)
@@ -136,6 +176,11 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 	var req createPayrollDetailRequest
 	if err := json.Read(w, r, &req); err != nil {
 		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.EmployeeID <= 0 {
+		json.WriteError(w, http.StatusBadRequest, "employee_id is required")
 		return
 	}
 
@@ -151,17 +196,28 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	netPay, err := money.ParseCents(req.NetPay)
-	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, "invalid net_pay")
-		return
+	var hourlyRate, hoursWorked int64
+	if req.HourlyRate != nil {
+		hourlyRate, err = money.ParseCents(*req.HourlyRate)
+		if err != nil {
+			json.WriteError(w, http.StatusBadRequest, "invalid hourly_rate")
+			return
+		}
+	}
+	if req.HoursWorked != nil {
+		hoursWorked, err = money.ParseCents(*req.HoursWorked)
+		if err != nil {
+			json.WriteError(w, http.StatusBadRequest, "invalid hours_worked")
+			return
+		}
 	}
 
 	response, err := h.service.CreatePayrollDetail(r.Context(), runID, CreatePayrollDetailParams{
 		EmployeeID:   req.EmployeeID,
 		GrossPay:     grossPay,
 		TaxDeduction: taxDeduction,
-		NetPay:       netPay,
+		HourlyRate:   hourlyRate,
+		HoursWorked:  hoursWorked,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create payroll detail", "error", err)
@@ -205,4 +261,78 @@ func (h *handler) ListPayrollDetailsByEmployeeID(w http.ResponseWriter, r *http.
 	}
 
 	json.Write(w, http.StatusOK, responses)
+}
+
+func (h *handler) CreateDeduction(w http.ResponseWriter, r *http.Request) {
+	detailIDStr := chi.URLParam(r, "detailID")
+	detailID, err := strconv.ParseInt(detailIDStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid detail ID")
+		return
+	}
+
+	var req createDeductionRequest
+	if err := json.Read(w, r, &req); err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if req.DeductionType == "" {
+		json.WriteError(w, http.StatusBadRequest, "deduction_type is required")
+		return
+	}
+
+	amount, err := money.ParseCents(req.Amount)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid amount")
+		return
+	}
+
+	response, err := h.service.CreateDeduction(r.Context(), CreateDeductionParams{
+		PayrollDetailID: detailID,
+		DeductionType:   req.DeductionType,
+		Amount:          amount,
+	})
+	if err != nil {
+		slog.ErrorContext(r.Context(), "failed to create deduction", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	json.Write(w, http.StatusCreated, response)
+}
+
+func (h *handler) ListDeductions(w http.ResponseWriter, r *http.Request) {
+	detailIDStr := chi.URLParam(r, "detailID")
+	detailID, err := strconv.ParseInt(detailIDStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid detail ID")
+		return
+	}
+
+	deductions, err := h.service.ListDeductionsByDetailID(r.Context(), detailID)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "failed to list deductions", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	json.Write(w, http.StatusOK, deductions)
+}
+
+func (h *handler) DeleteDeduction(w http.ResponseWriter, r *http.Request) {
+	deductionIDStr := chi.URLParam(r, "deductionID")
+	deductionID, err := strconv.ParseInt(deductionIDStr, 10, 64)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid deduction ID")
+		return
+	}
+
+	if err := h.service.DeleteDeduction(r.Context(), deductionID); err != nil {
+		slog.ErrorContext(r.Context(), "failed to delete deduction", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
