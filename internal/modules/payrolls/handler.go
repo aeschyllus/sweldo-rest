@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -32,7 +33,13 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 	var req createPayrollRunRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	totalPay, err := money.ParseCents(req.TotalPay)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid total_pay")
 		return
 	}
 
@@ -40,7 +47,7 @@ func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 		CompanyID:      req.CompanyID,
 		RunDate:        req.RunDate,
 		TotalEmployees: req.TotalEmployees,
-		TotalPay:       req.TotalPay,
+		TotalPay:       totalPay,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create payroll run", "error", err)
@@ -95,13 +102,19 @@ func (h *handler) UpdatePayrollRunByID(w http.ResponseWriter, r *http.Request) {
 
 	var req updatePayrollRunRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	totalPay, err := money.ParseCents(req.TotalPay)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid total_pay")
 		return
 	}
 
 	response, err := h.service.UpdatePayrollRunByID(r.Context(), id, UpdatePayrollRunParams{
 		TotalEmployees: req.TotalEmployees,
-		TotalPay:       req.TotalPay,
+		TotalPay:       totalPay,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to update payroll run", "error", err)
@@ -122,15 +135,33 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 
 	var req createPayrollDetailRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	grossPay, err := money.ParseCents(req.GrossPay)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid gross_pay")
+		return
+	}
+
+	taxDeduction, err := money.ParseCents(req.TaxDeduction)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid tax_deduction")
+		return
+	}
+
+	netPay, err := money.ParseCents(req.NetPay)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, "invalid net_pay")
 		return
 	}
 
 	response, err := h.service.CreatePayrollDetail(r.Context(), runID, CreatePayrollDetailParams{
 		EmployeeID:   req.EmployeeID,
-		GrossPay:     req.GrossPay,
-		TaxDeduction: req.TaxDeduction,
-		NetPay:       req.NetPay,
+		GrossPay:     grossPay,
+		TaxDeduction: taxDeduction,
+		NetPay:       netPay,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create payroll detail", "error", err)

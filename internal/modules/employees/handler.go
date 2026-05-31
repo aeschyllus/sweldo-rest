@@ -1,11 +1,13 @@
 package employees
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -25,7 +27,13 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	var req createEmployeeRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	baseSalary, err := money.ParseCents(req.BaseSalary)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid base_salary: %s", req.BaseSalary))
 		return
 	}
 
@@ -35,7 +43,7 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		LastName:       req.LastName,
 		EmploymentType: req.EmploymentType,
 		SalaryType:     req.SalaryType,
-		BaseSalary:     req.BaseSalary,
+		BaseSalary:     baseSalary,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create employee", "error", err)
@@ -62,13 +70,18 @@ func (h *handler) ListEmployeesByCompanyID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	employee, err := h.service.ListEmployeesByCompanyID(r.Context(), params)
+	employees, err := h.service.ListEmployeesByCompanyID(r.Context(), params)
 	if err != nil {
-		json.WriteError(w, http.StatusNotFound, err.Error())
+		slog.ErrorContext(r.Context(), "failed to list employees", "error", err)
+		json.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	json.Write(w, http.StatusOK, employee)
+	if employees == nil {
+		employees = []EmployeeResponse{}
+	}
+
+	json.Write(w, http.StatusOK, employees)
 }
 
 // TODO: refactor to prevent companies from searching employees of other companies
@@ -76,22 +89,24 @@ func (h *handler) FindEmployeeByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "employeeID")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid employee ID")
 		return
 	}
 
-	var req findEmployeeRequest
-	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+	companyIDStr := r.URL.Query().Get("company_id")
+	companyID, err := strconv.ParseInt(companyIDStr, 10, 64)
+	if err != nil || companyID == 0 {
+		json.WriteError(w, http.StatusBadRequest, "company_id is required")
 		return
 	}
 
 	employee, err := h.service.FindEmployeeByID(r.Context(), FindEmployeeParams{
 		ID:        id,
-		CompanyID: req.CompanyID,
+		CompanyID: companyID,
 	})
 	if err != nil {
-		json.WriteError(w, http.StatusNotFound, err.Error())
+		slog.ErrorContext(r.Context(), "failed to find employee", "error", err)
+		json.WriteError(w, http.StatusNotFound, "employee not found")
 		return
 	}
 
@@ -102,13 +117,19 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "employeeID")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid employee ID")
 		return
 	}
 
 	var req updateEmployeeRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	baseSalary, err := money.ParseCents(req.BaseSalary)
+	if err != nil {
+		json.WriteError(w, http.StatusBadRequest, fmt.Sprintf("invalid base_salary: %s", req.BaseSalary))
 		return
 	}
 
@@ -118,7 +139,7 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 		LastName:       req.LastName,
 		EmploymentType: req.EmploymentType,
 		SalaryType:     req.SalaryType,
-		BaseSalary:     req.BaseSalary,
+		BaseSalary:     baseSalary,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to update employee", "error", err)

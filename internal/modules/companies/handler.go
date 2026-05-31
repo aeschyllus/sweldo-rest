@@ -25,7 +25,7 @@ func (h *handler) RegisterRoutes(r chi.Router) {
 func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 	var req createCompanyRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
@@ -69,13 +69,14 @@ func (h *handler) FindCompanyByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "companyID")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid company ID")
 		return
 	}
 
 	company, err := h.service.FindCompanyByID(r.Context(), id)
 	if err != nil {
-		json.WriteError(w, http.StatusNotFound, err.Error())
+		slog.ErrorContext(r.Context(), "failed to find company", "error", err)
+		json.WriteError(w, http.StatusNotFound, "company not found")
 		return
 	}
 
@@ -86,13 +87,13 @@ func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "companyID")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid company ID")
 		return
 	}
 
 	var req updateCompanyRequest
 	if err := json.Read(w, r, &req); err != nil {
-		json.WriteError(w, http.StatusBadRequest, err.Error())
+		json.WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 

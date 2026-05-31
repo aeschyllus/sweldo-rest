@@ -2,6 +2,7 @@ package employees
 
 import (
 	"context"
+	"time"
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 )
@@ -15,32 +16,28 @@ type service struct {
 }
 
 type Service interface {
-	CreateEmployee(ctx context.Context, params CreateEmployeeParams) (sqlc.Employee, error)
-	ListEmployeesByCompanyID(ctx context.Context, params ListEmployeesParams) ([]sqlc.Employee, error)
-	FindEmployeeByID(ctx context.Context, params FindEmployeeParams) (sqlc.Employee, error)
-	UpdateEmployeeByID(ctx context.Context, params UpdateEmployeeParams) (sqlc.Employee, error)
+	CreateEmployee(ctx context.Context, params CreateEmployeeParams) (EmployeeResponse, error)
+	ListEmployeesByCompanyID(ctx context.Context, params ListEmployeesParams) ([]EmployeeResponse, error)
+	FindEmployeeByID(ctx context.Context, params FindEmployeeParams) (EmployeeResponse, error)
+	UpdateEmployeeByID(ctx context.Context, params UpdateEmployeeParams) (EmployeeResponse, error)
 }
 
 type createEmployeeRequest struct {
-	CompanyID      int64   `json:"company_id"`
-	FirstName      string  `json:"first_name"`
-	LastName       string  `json:"last_name"`
-	EmploymentType string  `json:"employment_type"`
-	SalaryType     string  `json:"salary_type"`
-	BaseSalary     float64 `json:"base_salary"`
-}
-
-type findEmployeeRequest struct {
-	CompanyID int64 `json:"company_id"`
+	CompanyID      int64  `json:"company_id"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	EmploymentType string `json:"employment_type"`
+	SalaryType     string `json:"salary_type"`
+	BaseSalary     string `json:"base_salary"`
 }
 
 type updateEmployeeRequest struct {
-	ID             int64   `json:"id"`
-	FirstName      string  `json:"first_name"`
-	LastName       string  `json:"last_name"`
-	EmploymentType string  `json:"employment_type"`
-	SalaryType     string  `json:"salary_type"`
-	BaseSalary     float64 `json:"base_salary"`
+	ID             int64  `json:"id"`
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	EmploymentType string `json:"employment_type"`
+	SalaryType     string `json:"salary_type"`
+	BaseSalary     string `json:"base_salary"`
 }
 
 type CreateEmployeeParams struct {
@@ -49,7 +46,7 @@ type CreateEmployeeParams struct {
 	LastName       string
 	EmploymentType string
 	SalaryType     string
-	BaseSalary     float64
+	BaseSalary     int64
 }
 
 type ListEmployeesParams struct {
@@ -68,5 +65,17 @@ type UpdateEmployeeParams struct {
 	LastName       string
 	EmploymentType string
 	SalaryType     string
-	BaseSalary     float64
+	BaseSalary     int64
+}
+
+type EmployeeResponse struct {
+	ID             int64     `json:"id"`
+	CompanyID      int64     `json:"company_id"`
+	FirstName      string    `json:"first_name"`
+	LastName       string    `json:"last_name"`
+	EmploymentType string    `json:"employment_type"`
+	SalaryType     string    `json:"salary_type"`
+	BaseSalary     string    `json:"base_salary"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }

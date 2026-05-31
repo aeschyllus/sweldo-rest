@@ -26,41 +26,41 @@ type Service interface {
 }
 
 type createPayrollRunRequest struct {
-	CompanyID      int64   `json:"company_id"`
-	RunDate        string  `json:"run_date"`
-	TotalEmployees int32   `json:"total_employees"`
-	TotalPay       float64 `json:"total_pay"`
+	CompanyID      int64  `json:"company_id"`
+	RunDate        string `json:"run_date"`
+	TotalEmployees int32  `json:"total_employees"`
+	TotalPay       string `json:"total_pay"`
 }
 
 type updatePayrollRunRequest struct {
-	TotalEmployees int32   `json:"total_employees"`
-	TotalPay       float64 `json:"total_pay"`
+	TotalEmployees int32  `json:"total_employees"`
+	TotalPay       string `json:"total_pay"`
 }
 
 type createPayrollDetailRequest struct {
-	EmployeeID   int64   `json:"employee_id"`
-	GrossPay     float64 `json:"gross_pay"`
-	TaxDeduction float64 `json:"tax_deduction"`
-	NetPay       float64 `json:"net_pay"`
+	EmployeeID   int64  `json:"employee_id"`
+	GrossPay     string `json:"gross_pay"`
+	TaxDeduction string `json:"tax_deduction"`
+	NetPay       string `json:"net_pay"`
 }
 
 type CreatePayrollRunParams struct {
 	CompanyID      int64
 	RunDate        string
 	TotalEmployees int32
-	TotalPay       float64
+	TotalPay       int64
 }
 
 type UpdatePayrollRunParams struct {
 	TotalEmployees int32
-	TotalPay       float64
+	TotalPay       int64
 }
 
 type CreatePayrollDetailParams struct {
 	EmployeeID   int64
-	GrossPay     float64
-	TaxDeduction float64
-	NetPay       float64
+	GrossPay     int64
+	TaxDeduction int64
+	NetPay       int64
 }
 
 type listPayrollRunsQuery struct {
@@ -76,7 +76,7 @@ type PayrollRunResponse struct {
 	CompanyID      int64     `json:"company_id"`
 	RunDate        string    `json:"run_date"`
 	TotalEmployees int32     `json:"total_employees"`
-	TotalPay       float64   `json:"total_pay"`
+	TotalPay       string    `json:"total_pay"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
@@ -84,8 +84,8 @@ type PayrollDetailResponse struct {
 	ID           int64     `json:"id"`
 	PayrollRunID int64     `json:"payroll_run_id"`
 	EmployeeID   int64     `json:"employee_id"`
-	GrossPay     float64   `json:"gross_pay"`
-	TaxDeduction float64   `json:"tax_deduction"`
-	NetPay       float64   `json:"net_pay"`
+	GrossPay     string    `json:"gross_pay"`
+	TaxDeduction string    `json:"tax_deduction"`
+	NetPay       string    `json:"net_pay"`
 	CreatedAt    time.Time `json:"created_at"`
 }

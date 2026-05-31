@@ -9,14 +9,16 @@ import (
 	"github.com/aeschyllus/sweldo-rest/internal/modules/companies"
 	"github.com/aeschyllus/sweldo-rest/internal/modules/employees"
 	"github.com/aeschyllus/sweldo-rest/internal/modules/payrolls"
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type application struct {
 	config config
-	db     *pgx.Conn
+	db     *pgxpool.Pool
+	server *http.Server
 }
 
 type config struct {
@@ -39,6 +41,11 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.Timeout(time.Minute))
 
 	r.Get("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+		if err := app.db.Ping(r.Context()); err != nil {
+			slog.ErrorContext(r.Context(), "healthcheck failed", "error", err)
+			json.WriteError(w, http.StatusServiceUnavailable, "database unreachable")
+			return
+		}
 		w.Write([]byte("all good"))
 	})
 
@@ -61,7 +68,7 @@ func (app *application) mount() http.Handler {
 }
 
 func (app *application) run(h http.Handler) error {
-	srv := &http.Server{
+	app.server = &http.Server{
 		Addr:         app.config.addr,
 		Handler:      h,
 		WriteTimeout: time.Second * 30,
@@ -71,5 +78,5 @@ func (app *application) run(h http.Handler) error {
 
 	slog.Info("server started", "addr", app.config.addr)
 
-	return srv.ListenAndServe()
+	return app.server.ListenAndServe()
 }

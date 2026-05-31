@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/pgconvert"
 )
 
@@ -148,24 +149,33 @@ func (s *service) ListAllPayrollDetailsByEmployeeID(ctx context.Context, employe
 // Helper functions (package-level, not methods)
 
 func toPayrollRunResponse(run sqlc.PayrollRun) PayrollRunResponse {
+	cents, err := pgconvert.FromNumeric(run.TotalPay)
+	if err != nil {
+		cents = 0
+	}
+
 	return PayrollRunResponse{
 		ID:             run.ID,
 		CompanyID:      run.CompanyID,
 		RunDate:        pgconvert.FromDate(run.RunDate),
 		TotalEmployees: run.TotalEmployees,
-		TotalPay:       pgconvert.FromNumeric(run.TotalPay),
+		TotalPay:       money.FormatCents(cents),
 		CreatedAt:      pgconvert.FromTimestamptz(run.CreatedAt),
 	}
 }
 
 func toPayrollDetailResponse(detail sqlc.PayrollDetail) PayrollDetailResponse {
+	gross, _ := pgconvert.FromNumeric(detail.GrossPay)
+	tax, _ := pgconvert.FromNumeric(detail.TaxDeduction)
+	net, _ := pgconvert.FromNumeric(detail.NetPay)
+
 	return PayrollDetailResponse{
 		ID:           detail.ID,
 		PayrollRunID: detail.PayrollRunID,
 		EmployeeID:   detail.EmployeeID,
-		GrossPay:     pgconvert.FromNumeric(detail.GrossPay),
-		TaxDeduction: pgconvert.FromNumeric(detail.TaxDeduction),
-		NetPay:       pgconvert.FromNumeric(detail.NetPay),
+		GrossPay:     money.FormatCents(gross),
+		TaxDeduction: money.FormatCents(tax),
+		NetPay:       money.FormatCents(net),
 		CreatedAt:    pgconvert.FromTimestamptz(detail.CreatedAt),
 	}
 }
