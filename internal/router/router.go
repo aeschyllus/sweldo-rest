@@ -53,7 +53,7 @@ func New(pool *pgxpool.Pool, jwtSecret string) http.Handler {
 	})
 
 	// Auth module (public routes)
-	authSvc := authmodule.NewService(authmodule.NewUserRepository(pool), jwtSecret)
+	authSvc := authmodule.NewService(sqlc.New(pool), jwtSecret)
 	authH := authmodule.NewHandler(authSvc)
 	authH.RegisterRoutes(r)
 

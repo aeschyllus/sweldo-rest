@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func NewService(repo UserRepository, jwtSecret string) Service {
+func NewService(repo sqlc.Querier, jwtSecret string) Service {
 	return &service{repo: repo, jwtSecret: jwtSecret}
 }
 
@@ -29,7 +30,7 @@ func (s *service) Register(ctx context.Context, params RegisterParams) (AuthResp
 		return AuthResponse{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	user, err := s.repo.CreateUser(ctx, CreateUserParams{
+	user, err := s.repo.CreateUser(ctx, sqlc.CreateUserParams{
 		CompanyID:    params.CompanyID,
 		Email:        params.Email,
 		PasswordHash: string(hash),
@@ -68,7 +69,7 @@ func (s *service) Login(ctx context.Context, params LoginParams) (AuthResponse, 
 		return AuthResponse{}, fmt.Errorf("invalid email or password")
 	}
 
-	token, err := s.generateToken(*user)
+	token, err := s.generateToken(user)
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -81,7 +82,7 @@ func (s *service) Login(ctx context.Context, params LoginParams) (AuthResponse, 
 	}, nil
 }
 
-func (s *service) generateToken(user User) (string, error) {
+func (s *service) generateToken(user sqlc.User) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":    user.ID,
 		"company_id": user.CompanyID,

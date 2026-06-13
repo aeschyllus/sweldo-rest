@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+
+	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 )
 
 type handler struct {
@@ -9,31 +11,13 @@ type handler struct {
 }
 
 type service struct {
-	repo      UserRepository
+	repo      sqlc.Querier
 	jwtSecret string
 }
 
 type Service interface {
 	Register(ctx context.Context, params RegisterParams) (AuthResponse, error)
 	Login(ctx context.Context, params LoginParams) (AuthResponse, error)
-}
-
-type UserRepository interface {
-	CreateUser(ctx context.Context, params CreateUserParams) (User, error)
-	FindUserByEmail(ctx context.Context, email string) (*User, error)
-}
-
-type User struct {
-	ID           int64
-	CompanyID    int64
-	Email        string
-	PasswordHash string
-}
-
-type CreateUserParams struct {
-	CompanyID    int64
-	Email        string
-	PasswordHash string
 }
 
 type RegisterParams struct {
