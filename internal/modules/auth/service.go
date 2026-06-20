@@ -7,6 +7,7 @@ import (
 
 	"github.com/aeschyllus/sweldo-rest/internal/adapters/postgresql/sqlc"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,6 +35,7 @@ func (s *service) Register(ctx context.Context, params RegisterParams) (AuthResp
 		CompanyID:    params.CompanyID,
 		Email:        params.Email,
 		PasswordHash: string(hash),
+		CreatedBy:    pgtype.Int8{Valid: false},
 	})
 	if err != nil {
 		return AuthResponse{}, fmt.Errorf("failed to create user: %w", err)

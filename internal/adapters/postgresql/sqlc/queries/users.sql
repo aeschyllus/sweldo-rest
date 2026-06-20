@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (company_id, email, password_hash)
-VALUES ($1, $2, $3)
+INSERT INTO users (company_id, email, password_hash, created_by)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: FindUserByEmail :one

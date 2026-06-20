@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/auth"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
 	"github.com/go-chi/chi/v5"
 )
@@ -38,9 +39,12 @@ func (h *handler) CreateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	company, err := h.service.CreateCompany(r.Context(), CreateCompanyParams{
-		Name:  req.Name,
-		TaxID: req.TaxID,
+		Name:      req.Name,
+		TaxID:     req.TaxID,
+		CreatedBy: userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create company", "error", err)
@@ -109,10 +113,13 @@ func (h *handler) UpdateCompanyByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	company, err := h.service.UpdateCompanyByID(r.Context(), UpdateCompanyParams{
-		ID:    id,
-		Name:  req.Name,
-		TaxID: req.TaxID,
+		ID:        id,
+		Name:      req.Name,
+		TaxID:     req.TaxID,
+		UpdatedBy: userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to update company", "error", err)

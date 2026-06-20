@@ -1,6 +1,6 @@
 -- name: CreateDeduction :one
-INSERT INTO deductions (payroll_detail_id, deduction_type, amount)
-VALUES ($1, $2, $3)
+INSERT INTO deductions (payroll_detail_id, deduction_type, amount, created_by)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: ListDeductionsByPayrollDetailID :many

@@ -24,6 +24,7 @@ type RegisterParams struct {
 	CompanyID int64
 	Email     string
 	Password  string
+	CreatedBy int64
 }
 
 type LoginParams struct {

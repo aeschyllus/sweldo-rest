@@ -32,8 +32,9 @@ type updateCompanyRequest struct {
 }
 
 type CreateCompanyParams struct {
-	Name  string
-	TaxID string
+	Name      string
+	TaxID     string
+	CreatedBy int64
 }
 
 type ListCompaniesParams struct {
@@ -43,7 +44,8 @@ type ListCompaniesParams struct {
 }
 
 type UpdateCompanyParams struct {
-	ID    int64
-	Name  string
-	TaxID string
+	ID        int64
+	Name      string
+	TaxID     string
+	UpdatedBy int64
 }

@@ -78,6 +78,7 @@ type CreateEmployeeParams struct {
 	EmploymentType string
 	SalaryType     string
 	BaseSalary     int64
+	CreatedBy      int64
 }
 
 type ListEmployeesParams struct {
@@ -100,6 +101,7 @@ type UpdateEmployeeParams struct {
 	EmploymentType string
 	SalaryType     string
 	BaseSalary     int64
+	UpdatedBy      int64
 }
 
 type EmployeeResponse struct {

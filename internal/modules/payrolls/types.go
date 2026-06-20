@@ -20,7 +20,7 @@ type Service interface {
 	ListPayrollRunsByCompanyID(ctx context.Context, companyID int64) ([]PayrollRunResponse, error)
 	FindPayrollRunByID(ctx context.Context, id int64) (PayrollRunResponse, error)
 	UpdatePayrollRunByID(ctx context.Context, id int64, params UpdatePayrollRunParams) (PayrollRunResponse, error)
-	FinalizePayrollRun(ctx context.Context, id int64) (PayrollRunResponse, error)
+	FinalizePayrollRun(ctx context.Context, id int64, userID int64) (PayrollRunResponse, error)
 	CreatePayrollDetail(ctx context.Context, runID int64, params CreatePayrollDetailParams) (PayrollDetailResponse, error)
 	ListAllPayrollDetailsByRunID(ctx context.Context, runID int64) ([]PayrollDetailResponse, error)
 	ListAllPayrollDetailsByEmployeeID(ctx context.Context, employeeID int64) ([]PayrollDetailResponse, error)
@@ -58,11 +58,13 @@ type CreatePayrollRunParams struct {
 	RunDate        string
 	TotalEmployees int32
 	TotalPay       int64
+	CreatedBy      int64
 }
 
 type UpdatePayrollRunParams struct {
 	TotalEmployees int32
 	TotalPay       int64
+	UpdatedBy      int64
 }
 
 type CreatePayrollDetailParams struct {
@@ -71,12 +73,14 @@ type CreatePayrollDetailParams struct {
 	TaxDeduction int64
 	HourlyRate   int64
 	HoursWorked  int64
+	CreatedBy    int64
 }
 
 type CreateDeductionParams struct {
 	PayrollDetailID int64
 	DeductionType   string
 	Amount          int64
+	CreatedBy       int64
 }
 
 type listPayrollRunsQuery struct {

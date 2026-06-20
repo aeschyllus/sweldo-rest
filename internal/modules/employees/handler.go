@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/auth"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
 	"github.com/go-chi/chi/v5"
@@ -57,6 +58,8 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	employee, err := h.service.CreateEmployee(r.Context(), CreateEmployeeParams{
 		CompanyID:      companyID,
 		FirstName:      req.FirstName,
@@ -64,6 +67,7 @@ func (h *handler) CreateEmployee(w http.ResponseWriter, r *http.Request) {
 		EmploymentType: req.EmploymentType,
 		SalaryType:     req.SalaryType,
 		BaseSalary:     baseSalary,
+		CreatedBy:      userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create employee", "error", err)
@@ -163,6 +167,8 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	employee, err := h.service.UpdateEmployeeByID(r.Context(), UpdateEmployeeParams{
 		ID:             id,
 		CompanyID:      companyID,
@@ -171,6 +177,7 @@ func (h *handler) UpdateEmployeeByID(w http.ResponseWriter, r *http.Request) {
 		EmploymentType: req.EmploymentType,
 		SalaryType:     req.SalaryType,
 		BaseSalary:     baseSalary,
+		UpdatedBy:      userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to update employee", "error", err)

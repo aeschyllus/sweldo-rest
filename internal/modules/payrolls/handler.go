@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/aeschyllus/sweldo-rest/internal/pkg/auth"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/json"
 	"github.com/aeschyllus/sweldo-rest/internal/pkg/money"
 	"github.com/go-chi/chi/v5"
@@ -65,11 +66,14 @@ func (h *handler) CreatePayrollRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	response, err := h.service.CreatePayrollRun(r.Context(), CreatePayrollRunParams{
 		CompanyID:      companyID,
 		RunDate:        req.RunDate,
 		TotalEmployees: req.TotalEmployees,
 		TotalPay:       totalPay,
+		CreatedBy:      userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create payroll run", "error", err)
@@ -134,9 +138,12 @@ func (h *handler) UpdatePayrollRunByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	response, err := h.service.UpdatePayrollRunByID(r.Context(), id, UpdatePayrollRunParams{
 		TotalEmployees: req.TotalEmployees,
 		TotalPay:       totalPay,
+		UpdatedBy:      userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to update payroll run", "error", err)
@@ -155,7 +162,9 @@ func (h *handler) FinalizePayrollRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.service.FinalizePayrollRun(r.Context(), id)
+	userID := auth.UserIDFromContext(r.Context())
+
+	response, err := h.service.FinalizePayrollRun(r.Context(), id, userID)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to finalize payroll run", "error", err)
 		json.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -212,12 +221,15 @@ func (h *handler) CreatePayrollDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	response, err := h.service.CreatePayrollDetail(r.Context(), runID, CreatePayrollDetailParams{
 		EmployeeID:   req.EmployeeID,
 		GrossPay:     grossPay,
 		TaxDeduction: taxDeduction,
 		HourlyRate:   hourlyRate,
 		HoursWorked:  hoursWorked,
+		CreatedBy:    userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create payroll detail", "error", err)
@@ -288,10 +300,13 @@ func (h *handler) CreateDeduction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := auth.UserIDFromContext(r.Context())
+
 	response, err := h.service.CreateDeduction(r.Context(), CreateDeductionParams{
 		PayrollDetailID: detailID,
 		DeductionType:   req.DeductionType,
 		Amount:          amount,
+		CreatedBy:       userID,
 	})
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to create deduction", "error", err)

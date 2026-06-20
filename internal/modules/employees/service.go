@@ -25,6 +25,7 @@ func (s *service) CreateEmployee(ctx context.Context, params CreateEmployeeParam
 		EmploymentType: params.EmploymentType,
 		SalaryType:     params.SalaryType,
 		BaseSalary:     baseSalary,
+		CreatedBy:      pgtype.Int8{Int64: params.CreatedBy, Valid: true},
 	})
 	if err != nil {
 		return EmployeeResponse{}, err
@@ -78,6 +79,7 @@ func (s *service) UpdateEmployeeByID(ctx context.Context, params UpdateEmployeeP
 		EmploymentType: params.EmploymentType,
 		SalaryType:     params.SalaryType,
 		BaseSalary:     baseSalary,
+		UpdatedBy:      pgtype.Int8{Int64: params.UpdatedBy, Valid: true},
 	})
 	if err != nil {
 		return EmployeeResponse{}, err

@@ -30,6 +30,7 @@ func (s *service) CreatePayrollRun(ctx context.Context, params CreatePayrollRunP
 		RunDate:        toDate(runDate),
 		TotalEmployees: params.TotalEmployees,
 		TotalPay:       totalPay,
+		CreatedBy:      pgtype.Int8{Int64: params.CreatedBy, Valid: true},
 	}
 
 	run, err := s.repo.CreatePayrollRun(ctx, sqlcParams)
@@ -73,6 +74,7 @@ func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params Upd
 		TotalEmployees: params.TotalEmployees,
 		TotalPay:       totalPay,
 		ID:             id,
+		UpdatedBy:      pgtype.Int8{Int64: params.UpdatedBy, Valid: true},
 	}
 
 	run, err := s.repo.UpdatePayrollRunByID(ctx, sqlcParams)
@@ -83,8 +85,11 @@ func (s *service) UpdatePayrollRunByID(ctx context.Context, id int64, params Upd
 	return toPayrollRunResponse(run), nil
 }
 
-func (s *service) FinalizePayrollRun(ctx context.Context, id int64) (PayrollRunResponse, error) {
-	run, err := s.repo.FinalizePayrollRunByID(ctx, id)
+func (s *service) FinalizePayrollRun(ctx context.Context, id int64, userID int64) (PayrollRunResponse, error) {
+	run, err := s.repo.FinalizePayrollRunByID(ctx, sqlc.FinalizePayrollRunByIDParams{
+		ID:        id,
+		UpdatedBy: pgtype.Int8{Int64: userID, Valid: true},
+	})
 	if err != nil {
 		return PayrollRunResponse{}, fmt.Errorf("finalize payroll run: %w", err)
 	}
@@ -136,6 +141,7 @@ func (s *service) CreatePayrollDetail(ctx context.Context, runID int64, params C
 		NetPay:       netPay,
 		HourlyRate:   hourlyRate,
 		HoursWorked:  hoursWorked,
+		CreatedBy:    pgtype.Int8{Int64: params.CreatedBy, Valid: true},
 	}
 
 	detail, err := s.repo.CreatePayrollDetail(ctx, sqlcParams)
@@ -184,6 +190,7 @@ func (s *service) CreateDeduction(ctx context.Context, params CreateDeductionPar
 		PayrollDetailID: params.PayrollDetailID,
 		DeductionType:   params.DeductionType,
 		Amount:          amount,
+		CreatedBy:       pgtype.Int8{Int64: params.CreatedBy, Valid: true},
 	})
 	if err != nil {
 		return DeductionResponse{}, err

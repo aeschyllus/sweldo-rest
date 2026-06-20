@@ -13,8 +13,9 @@ func NewService(repo sqlc.Querier) Service {
 
 func (s *service) CreateCompany(ctx context.Context, params CreateCompanyParams) (sqlc.Company, error) {
 	return s.repo.CreateCompany(ctx, sqlc.CreateCompanyParams{
-		Name:  params.Name,
-		TaxID: params.TaxID,
+		Name:      params.Name,
+		TaxID:     params.TaxID,
+		CreatedBy: pgtype.Int8{Int64: params.CreatedBy, Valid: true},
 	})
 }
 
@@ -32,9 +33,10 @@ func (s *service) FindCompanyByID(ctx context.Context, id int64) (sqlc.Company, 
 
 func (s *service) UpdateCompanyByID(ctx context.Context, params UpdateCompanyParams) (sqlc.Company, error) {
 	return s.repo.UpdateCompanyByID(ctx, sqlc.UpdateCompanyByIDParams{
-		ID:    params.ID,
-		Name:  params.Name,
-		TaxID: params.TaxID,
+		ID:        params.ID,
+		Name:      params.Name,
+		TaxID:     params.TaxID,
+		UpdatedBy: pgtype.Int8{Int64: params.UpdatedBy, Valid: true},
 	})
 }
 
