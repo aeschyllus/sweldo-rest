@@ -17,6 +17,12 @@
 - Identify changes from the plan that can be implemented in parallel, and use sub-agents to implement the features efficiently
 - When using sub-agents to implement features, act as a coordinator only
 - Use the best model for the task - premium models for complex tasks (like coding) and mid-tier models for simpler tasks, like documentation
+- Before writing any code, check these five things in order. If none applies, only then should you write new code and always write the smallest version that works:
+  - does this need to exist at all?
+  - does the standard library already handle it?
+  - does the platform have native feature for it?
+  - Is it already a dependency?
+  - Can it be done in one line?
 
 ## CODE REVIEWS
 
