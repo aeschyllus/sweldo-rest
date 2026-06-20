@@ -51,7 +51,6 @@ $ go run cmd/*.go
 Simply run the following command:
 
 ```zsh
-$ goose -s description_of_migration sql
+$ goose create -s description_of_migration sql
 $ Created new file: 00001_description_of_migration.sql
 ```
-
